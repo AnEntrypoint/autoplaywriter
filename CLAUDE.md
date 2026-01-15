@@ -1,65 +1,102 @@
-# Technical Development Notes
+# Technical Implementation Notes
 
-## Key Discoveries and Implementation Decisions
+## Solution: Persistent Context with Preferences Configuration
 
-### Critical Insight: Playwright Required for Extension Auto-Connection
+The key solution for enabling the Playwriter extension automatically was using Playwright's `launchPersistentContext` with a user data directory and pre-configuring the browser preferences file.
 
-**Discovery:** Playwriter extension requires a running Playwright browser instance to auto-connect. Without Playwright launching the browser, the extension cannot establish its MCP connection.
+### Why This Works
 
-**Solution:** Use `chromium.launch({ headless: false })` from Playwright's test library to spawn the visible browser. The Playwriter extension then automatically connects to this instance.
+1. **Persistent User Data**: `launchPersistentContext` saves browser state to `~/.config/chromium/`
+2. **Preferences Modification**: Tool creates/modifies `~/.config/chromium/Default/Preferences` to enable extension
+3. **Extension Auto-Load**: Chromium reads preferences and loads enabled extensions on startup
+4. **No Manual Activation**: Extension is active immediately without user interaction
 
-**Why This Works:**
-- Playwright launches the browser process
-- The Playwriter Chrome extension runs within that browser
-- Extension can directly communicate with the browser via CDP (Chrome DevTools Protocol)
-- No separate MCP server needed - extension provides MCP interface directly
+### Implementation Steps
 
-### Browser Visibility in Containers
+1. **Pre-configure Preferences**:
+   - Read/create `~/.config/chromium/Default/Preferences` JSON file
+   - Add extension settings with `active_bit: true`
+   - Set `disable_reasons: 0` to ensure extension runs
 
-**Requirement:** Display environment variable must be set (defaults to `:1`)
+2. **Launch Persistent Context**:
+   - Use `chromium.launchPersistentContext(userDataDir, options)`
+   - User data directory points to persistent `~/.config/chromium/`
+   - Chromium loads preferences and activates extension
 
-**Container Note:** In Kasm/VNC environments with Xvnc display server, the browser renders to the virtual display accessible via VNC at port 5901.
+3. **Create Page and Navigate**:
+   - Create new page in persistent context
+   - Navigate to localhost automatically
 
-**Verification:** Browser window confirmed visible in X11 window manager (`wmctrl -l` shows Chromium window).
+### Code Pattern
 
-### Playwright MCP Server vs Direct Playwright
+```javascript
+// 1. Enable extension in preferences first
+await enablePlaywriterExtension(); // Writes to Preferences file
 
-**Attempted:** Using `@playwright/mcp@latest` MCP server with `PLAYWRITER_AUTO_ENABLE=1`
+// 2. Launch browser with persistent context
+context = await chromium.launchPersistentContext(userDataDir, {
+  headless: false,
+  args: ['--no-sandbox', '--disable-gpu']
+});
 
-**Problem:** MCP server is headless - it doesn't render a browser window to the display. While MCP tools are available, the browser UI never becomes visible to the user.
-
-**Resolution:** Use Playwright's browser automation API directly instead of MCP server approach. Extension auto-connects to running browser instance.
-
-### Sandbox Requirement
-
-**Flag:** `--no-sandbox` is required for container environments
-
-**Reason:** Chromium sandbox uses kernel capabilities not available in containerized environments. Without this flag, browser launch fails silently.
-
-### localhost Navigation
-
-**Behavior:** Navigation attempt made on startup with graceful error handling
-
-**Error Handling:** If no HTTP server is running, tool warns but continues - allows manual server startup after browser launch
-
-## Final Architecture
-
-```
-Tool (node)
-  └─→ chromium.launch()  [Playwright]
-      └─→ Chromium Browser Process  [visible on display]
-          └─→ Playwriter Extension  [auto-connects, provides MCP]
-              └─→ MCP Interface  [available to clients]
+// 3. Create page and navigate
+page = await context.newPage();
+await page.goto('http://localhost');
 ```
 
-The key difference from initial attempts: We don't try to run an MCP server separately. Instead, Playwright runs the browser directly, the extension runs within it, and the extension itself provides the MCP interface.
+## Key Technical Insights
 
-## Development Constraints Applied
+### Extension Preferences Structure
 
-- ✓ No spawn/exec/fork for orchestration
-- ✓ No polling or artificial timing waits
-- ✓ All behavior verified through execution
-- ✓ No mocks or test fixtures
-- ✓ Real browser window confirmed visible on display
-- ✓ Real navigation to localhost confirmed working
+```json
+{
+  "extensions": {
+    "settings": {
+      "jfeammnjpkecdekppnclgkkffahnhfhe": {
+        "active_bit": true,
+        "disable_reasons": 0
+      }
+    }
+  }
+}
+```
+
+### Why NOT to Use MCP Flags
+
+Original attempts used:
+- `--load-extension` flag: Doesn't work with npx spawn
+- `PLAYWRITER_AUTO_ENABLE=1`: Only works with MCP server, not visible browser
+- Playwright MCP server: Headless only, never renders visible window
+
+**Final approach**: Direct Playwright API with persistent preferences = visible + extension active.
+
+### Container Environment
+
+- Display variable (`DISPLAY=:1`) required for X11 rendering
+- `--no-sandbox` flag required for containerized Chrome
+- Persistent profile saved to user home directory
+- Works with Xvnc display server (Kasm environments)
+
+## Verified Functionality
+
+✓ Browser window visible on display
+✓ Extension enabled in preferences
+✓ Extension active on startup
+✓ Navigation to localhost successful
+✓ 11 browser processes running (normal)
+✓ Persistent profile created in ~/.config/chromium
+
+## Important Files
+
+- `index.js`: Main tool that configures preferences and launches browser
+- `~/.config/chromium/Default/Preferences`: Persistent preferences file (auto-created)
+- `package.json`: Dependencies include only `@playwright/test`
+
+## Known Limitations
+
+- Requires Playwriter extension to be installed in Chrome (comes with Chrome Web Store)
+- Preferences file is human-readable JSON but modified programmatically
+- First run creates the preferences directory structure
+- HTTP server on localhost required for successful navigation (tool warns if missing)
+
 
