@@ -1,0 +1,14 @@
+{
+  "name": "playwright-mcp-control",
+  "version": "1.0.0",
+  "description": "Simple tool to spawn and control Playwright MCP server",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js"
+  },
+  "keywords": ["playwright", "mcp", "json-rpc"],
+  "author": "",
+  "license": "ISC"
+}
