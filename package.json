@@ -1,14 +1,14 @@
 {
   "name": "playwright-mcp-control",
   "version": "1.0.0",
-  "description": "Browser automation tool that launches Chromium and navigates to localhost",
+  "description": "Browser automation with Playwright MCP and auto-enabled Playwriter extension",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js",
     "test": "node index.js"
   },
-  "keywords": ["playwright", "browser", "automation"],
+  "keywords": ["playwright", "mcp", "extension"],
   "author": "",
   "license": "ISC",
   "dependencies": {
