@@ -130,9 +130,32 @@ The preferences file structure:
 - No spawn/fork/exec for orchestration (Stdio transport handles it)
 - All behavior verified through real execution
 - No mocks or test fixtures
-- Extension installation handled automatically via Chromium
-- No manual extension installation steps needed
 - Works in containerized environments
+
+## Critical Caveat: Extension Installation Mechanism
+
+**Issue**: Simply configuring extension in user preferences is not sufficient for Chromium to load the extension. The extension must be registered at the system level.
+
+**Solution**: Use `chromeextensioninstaller` tool which:
+1. Registers extension at `/opt/google/chrome/extensions/{ID}.json` (system-wide)
+2. Contains external update URL pointing to Chrome Web Store
+3. Allows Chromium to automatically discover and load extension on startup
+
+**Implementation**:
+```javascript
+execSync(`npx -y gxe@latest AnEntrypoint/chromeextensioninstaller chromeextensioninstaller ${EXTENSION_ID}`, {
+  stdio: 'inherit',
+  timeout: 60000
+});
+```
+
+**Why This Matters**:
+- User preferences alone don't trigger extension download from Chrome Web Store
+- System-level registration ensures Chromium discovers the external extension
+- Without this, extension won't load even if preferences are set correctly
+- This is the critical piece that makes the extension visible to users
+
+**Platform Requirement**: Requires `chromeextensioninstaller` tool (AnEntrypoint/chromeextensioninstaller package) available in execution environment
 
 ## Files Structure
 

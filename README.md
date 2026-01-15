@@ -32,9 +32,11 @@ The tool combines three key components:
 - Browser window appears on the display
 
 ### 2. Playwriter Extension Configuration
+- Registers extension at system level: `/opt/google/chrome/extensions/{ID}.json`
 - Pre-configures `~/.config/chromium/Default/Preferences`
 - Enables extension ID: `jfeammnjpkecdekppnclgkkffahnhfhe`
 - Sets `active_bit: true` so extension loads on startup
+- System-level registration allows Chromium to discover and auto-install from Chrome Web Store
 - Extension provides MCP interface for AI automation
 
 ### 3. Playwright MCP Server
@@ -65,7 +67,9 @@ Once running, you can:
 
 - Display server running (X11/Xvnc for visible window)
 - HTTP server on `http://localhost` (optional, tool warns if missing)
-- Playwriter extension installed in Chrome (automatic via preferences)
+- `chromeextensioninstaller` tool available for extension registration
+  - Installed automatically via `npx -y gxe@latest AnEntrypoint/chromeextensioninstaller`
+  - This is essential for Chromium to discover and load the extension
 
 ## Deployed
 
