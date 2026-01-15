@@ -23,14 +23,17 @@ async function enablePlaywriterExtension() {
       // File doesn't exist yet - start with empty prefs
     }
 
-    // Enable the Playwriter extension
+    // Enable the Playwriter extension with update URL
     if (!prefs.extensions) prefs.extensions = {};
     if (!prefs.extensions.settings) prefs.extensions.settings = {};
     if (!prefs.extensions.settings[PLAYWRITER_EXTENSION_ID]) {
       prefs.extensions.settings[PLAYWRITER_EXTENSION_ID] = {};
     }
+
+    // Critical settings for extension to load and auto-update
     prefs.extensions.settings[PLAYWRITER_EXTENSION_ID].active_bit = true;
     prefs.extensions.settings[PLAYWRITER_EXTENSION_ID].disable_reasons = 0;
+    prefs.extensions.settings[PLAYWRITER_EXTENSION_ID].update_url = PLAYWRITER_STORE_URL;
 
     // Ensure directory exists
     await fs.mkdir(join(homedir(), '.config/chromium/Default'), { recursive: true });
@@ -45,57 +48,26 @@ async function enablePlaywriterExtension() {
   }
 }
 
-async function setupExtensionPolicy() {
-  // Create managed policies directory
-  const policiesDir = '/etc/chromium/policies/managed';
-  const policyFile = join(policiesDir, 'extension_install_forcelist.json');
+async function installSystemExtension() {
+  // Use the chromeextensioninstaller tool to install extension at system level
+  // This creates /opt/google/chrome/extensions/{ID}.json which Chromium reads on startup
+  console.log('[EXT] Installing extension via system tool...');
 
   try {
-    // This requires sudo - attempt but don't fail if it doesn't work
-    const policy = {
-      'ExtensionInstallForcelist': [
-        `${PLAYWRITER_EXTENSION_ID};${PLAYWRITER_STORE_URL}`
-      ]
-    };
-
-    // Try to write policy (will likely fail without sudo, but that's ok)
+    const { execSync } = await import('child_process');
     try {
-      await fs.mkdir(policiesDir, { recursive: true });
-      await fs.writeFile(policyFile, JSON.stringify(policy, null, 2));
-      console.log('[EXT] Extension policy installed at /etc/chromium/policies/managed');
-    } catch (err) {
-      // Policy directory is system-wide, skip if we can't write
-      console.log('[EXT] Extension policy requires sudo, skipping system policy');
-    }
-  } catch (err) {
-    // Silently skip
-  }
-}
-
-async function downloadExtension() {
-  const extensionsDir = join(homedir(), '.config/chromium/Default/Extensions', PLAYWRITER_EXTENSION_ID);
-
-  try {
-    // Create extensions directory
-    await fs.mkdir(extensionsDir, { recursive: true });
-
-    // Download extension manifest (minimal)
-    const manifestPath = join(extensionsDir, 'manifest.json');
-    try {
-      await fs.stat(manifestPath);
-      console.log('[EXT] Extension already downloaded');
+      execSync(`npx -y gxe@latest AnEntrypoint/chromeextensioninstaller chromeextensioninstaller ${PLAYWRITER_EXTENSION_ID}`, {
+        stdio: 'inherit',
+        timeout: 60000
+      });
+      console.log('[EXT] System extension installation complete');
       return true;
     } catch (err) {
-      // Not downloaded yet
+      console.log('[EXT] System tool not available, extension will use policy-based installation');
+      return false;
     }
-
-    // For Playwriter extension, we rely on Chromium's extension update mechanism
-    // The extension should be automatically downloaded when enabled in preferences
-    // with the correct update URL (clients2.google.com)
-    console.log('[EXT] Extension will be downloaded by Chromium on first run');
-    return true;
   } catch (err) {
-    console.warn('[EXT] Could not setup extension directory:', err.message);
+    console.log('[EXT] Tool not available, using policy-based installation');
     return false;
   }
 }
@@ -113,10 +85,9 @@ async function main() {
     env.DISPLAY = env.DISPLAY || ':1';
     env.PLAYWRITER_AUTO_ENABLE = '1';
 
-    // Setup extension configuration before launching browser
+    // Setup extension - install at system level and enable in user preferences
     console.log('[EXT] Configuring Playwriter extension...');
-    await setupExtensionPolicy();
-    await downloadExtension();
+    await installSystemExtension();
     await enablePlaywriterExtension();
 
     // Launch visible browser with persistent context and extension enabled
