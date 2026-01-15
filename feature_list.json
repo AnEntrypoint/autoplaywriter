@@ -9,7 +9,7 @@
         "Verify npx spawns the MCP server process",
         "Confirm server is ready to receive JSON-RPC instructions"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1
     },
     {
@@ -22,7 +22,7 @@
         "Verify browser navigates to http://localhost",
         "Verify page is displayed"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2
     },
     {
@@ -35,7 +35,7 @@
         "Can send additional instructions while open",
         "Session persists until user exits"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3
     },
     {
@@ -48,7 +48,7 @@
         "MCP server process terminates",
         "No orphaned processes remain"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 4
     }
   ]
