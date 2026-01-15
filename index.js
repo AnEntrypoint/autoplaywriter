@@ -19,7 +19,7 @@ async function main() {
     console.log('[TRANSPORT] Creating stdio transport...');
     const transport = new StdioClientTransport({
       command: 'npx',
-      args: ['-y', '@playwright/mcp@latest', '--browser', 'chromium', '--executable-path', chromeExePath, '--isolated', '--no-sandbox'],
+      args: ['-y', '@playwright/mcp@latest', '--browser', 'chromium', '--executable-path', chromeExePath, '--no-sandbox'],
       env
     });
 
