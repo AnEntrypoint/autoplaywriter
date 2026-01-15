@@ -15,15 +15,14 @@ async function main() {
     '.cache/ms-playwright/chromium-1200/chrome-linux/chrome'
   );
 
-  // Extension ID: Playwriter MCP (jfeammnjpkecdekppnclgkkffahnhfhe)
-  // The --extension flag enables browser extension support
-  // To use this, install the Playwriter MCP extension from Chrome Web Store
+  // Note: Playwriter MCP extension (jfeammnjpkecdekppnclgkkffahnhfhe) can be installed separately
+  // for browser extension integration, but is not required for basic browser control.
 
   try {
     console.log('[TRANSPORT] Creating stdio transport...');
     const transport = new StdioClientTransport({
       command: 'npx',
-      args: ['-y', '@playwright/mcp@latest', '--browser', 'chromium', '--executable-path', chromeExePath, '--no-sandbox', '--extension'],
+      args: ['-y', '@playwright/mcp@latest', '--browser', 'chromium', '--executable-path', chromeExePath, '--no-sandbox'],
       env
     });
 
