@@ -1,55 +1,65 @@
 # Technical Development Notes
 
-## Key Discoveries and Caveats
+## Key Discoveries and Implementation Decisions
+
+### Critical Insight: Playwright Required for Extension Auto-Connection
+
+**Discovery:** Playwriter extension requires a running Playwright browser instance to auto-connect. Without Playwright launching the browser, the extension cannot establish its MCP connection.
+
+**Solution:** Use `chromium.launch({ headless: false })` from Playwright's test library to spawn the visible browser. The Playwriter extension then automatically connects to this instance.
+
+**Why This Works:**
+- Playwright launches the browser process
+- The Playwriter Chrome extension runs within that browser
+- Extension can directly communicate with the browser via CDP (Chrome DevTools Protocol)
+- No separate MCP server needed - extension provides MCP interface directly
 
 ### Browser Visibility in Containers
 
-**Gotcha:** Playwright MCP does not visually launch a browser window by default in containerized environments. The server starts but the browser UI is not rendered.
+**Requirement:** Display environment variable must be set (defaults to `:1`)
 
-**Solution:** Browser process is launched by Playwright MCP through proper display forwarding (`DISPLAY` environment variable). The browser becomes visible when the environment has a display server (X11/VNC).
+**Container Note:** In Kasm/VNC environments with Xvnc display server, the browser renders to the virtual display accessible via VNC at port 5901.
 
-**Verification:** Browser process appears in `ps aux` output as `/usr/lib/chromium/chromium` with multiple child processes for rendering, networking, storage, and GPU.
+**Verification:** Browser window confirmed visible in X11 window manager (`wmctrl -l` shows Chromium window).
 
-### Playwriter vs Playwright MCP
+### Playwright MCP Server vs Direct Playwright
 
-**Critical Distinction:**
-- **Playwriter** (`playwriter@latest`): Browser extension-based MCP that requires existing Chrome with extension installed. Uses `PLAYWRITER_AUTO_ENABLE=1` for automatic tab creation but extension must be manually activated.
-- **Playwright MCP** (`@playwright/mcp@latest`): CLI tool that launches its own browser instance directly. No extension activation required.
+**Attempted:** Using `@playwright/mcp@latest` MCP server with `PLAYWRITER_AUTO_ENABLE=1`
 
-**Decision:** Use Playwright MCP directly since it provides complete browser control without requiring pre-existing browser setup.
+**Problem:** MCP server is headless - it doesn't render a browser window to the display. While MCP tools are available, the browser UI never becomes visible to the user.
 
-### Display Environment
+**Resolution:** Use Playwright's browser automation API directly instead of MCP server approach. Extension auto-connects to running browser instance.
 
-**Requirement:** Must set `DISPLAY` environment variable (defaults to `:1`)
+### Sandbox Requirement
 
-**Container Note:** In Kasm/VNC environments, the display server (Xvnc) must be running on the target display. The tool assumes this is already configured by the host environment.
+**Flag:** `--no-sandbox` is required for container environments
 
-### Sandbox Flag
+**Reason:** Chromium sandbox uses kernel capabilities not available in containerized environments. Without this flag, browser launch fails silently.
 
-**Flag:** `--no-sandbox` is required for container environments.
+### localhost Navigation
 
-**Why:** Chromium sandbox cannot operate within containerized environments without additional kernel capabilities. Without this flag, browser launch fails silently.
+**Behavior:** Navigation attempt made on startup with graceful error handling
 
-### Navigation Timing
+**Error Handling:** If no HTTP server is running, tool warns but continues - allows manual server startup after browser launch
 
-**Behavior:** Navigation to localhost may fail gracefully if no server is listening on port 80. The tool continues running regardless and reports the error.
+## Final Architecture
 
-**Error Handling:** Tool warns about navigation errors but does not exit, allowing for manual server startup after tool initialization.
+```
+Tool (node)
+  └─→ chromium.launch()  [Playwright]
+      └─→ Chromium Browser Process  [visible on display]
+          └─→ Playwriter Extension  [auto-connects, provides MCP]
+              └─→ MCP Interface  [available to clients]
+```
 
-### No Absolute Paths
-
-**Design Decision:** Configuration uses relative paths and environment variables only. No hardcoded absolute paths to browser executables or user directories.
-
-**Rationale:** Tool must be portable across different systems and user environments.
+The key difference from initial attempts: We don't try to run an MCP server separately. Instead, Playwright runs the browser directly, the extension runs within it, and the extension itself provides the MCP interface.
 
 ## Development Constraints Applied
 
-Following the gm state machine rules:
+- ✓ No spawn/exec/fork for orchestration
+- ✓ No polling or artificial timing waits
+- ✓ All behavior verified through execution
+- ✓ No mocks or test fixtures
+- ✓ Real browser window confirmed visible on display
+- ✓ Real navigation to localhost confirmed working
 
-- ✓ No spawn/exec/fork orchestration in code
-- ✓ No polling or setInterval for waiting
-- ✓ Executable output verified through real execution only
-- ✓ All MCP communication via stdio transport (official SDK)
-- ✓ Documentation created after verification, not during planning
-- ✓ Real data only (actual localhost navigation, real tool listing)
-- ✓ No mocks, fakes, or test fixtures in codebase
