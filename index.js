@@ -1,64 +1,37 @@
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { chromium } from '@playwright/test';
 
 async function main() {
-  console.log('[INIT] Starting Playwright MCP browser automation...');
+  console.log('[INIT] Starting browser automation...');
 
-  // Set environment for display
-  const env = { ...process.env };
-  env.DISPLAY = env.DISPLAY || ':1';
+  let browser;
+  let page;
 
   try {
-    console.log('[TRANSPORT] Creating stdio transport for Playwright MCP...');
-    const transport = new StdioClientTransport({
-      command: 'npx',
-      args: ['-y', '@playwright/mcp@latest', '--no-sandbox'],
-      env
+    // Launch browser on default display
+    console.log('[BROWSER] Launching Chromium...');
+    browser = await chromium.launch({
+      headless: false,
+      args: ['--no-sandbox', '--disable-gpu']
     });
 
-    // Log stderr from server for debugging
-    transport.process?.stderr?.on('data', (data) => {
-      console.error('[PLAYWRIGHT STDERR]', data.toString());
-    });
+    console.log('[BROWSER] Browser launched successfully');
 
-    console.log('[CLIENT] Creating MCP client...');
-    const client = new Client({
-      name: 'playwright-control',
-      version: '1.0.0'
-    }, {
-      capabilities: {}
-    });
-
-    console.log('[CONNECT] Connecting to Playwright MCP server...');
-    await client.connect(transport);
-
-    console.log('[CONNECTED] Successfully connected to Playwright MCP server');
-
-    // List available tools
-    console.log('[TOOLS] Listing available tools...');
-    const toolsList = await client.listTools();
-    console.log(`[TOOLS] Found ${toolsList.tools.length} tools:`);
-    toolsList.tools.forEach(tool => {
-      console.log(`  - ${tool.name}`);
-    });
+    // Create context and page
+    console.log('[PAGE] Creating browser context...');
+    const context = await browser.newContext();
+    page = await context.newPage();
 
     // Navigate to localhost
-    console.log('[NAV] Navigating browser to localhost...');
+    console.log('[NAV] Navigating to http://localhost...');
     try {
-      const navResult = await client.callTool({
-        name: 'browser_navigate',
-        arguments: {
-          url: 'http://localhost'
-        }
-      });
-
+      await page.goto('http://localhost', { waitUntil: 'domcontentloaded', timeout: 5000 });
       console.log('[NAV] Navigation successful');
     } catch (err) {
-      console.warn('[NAV] Navigation error (may be expected if localhost not running):', err.message);
+      console.warn('[NAV] Navigation failed (localhost may not be running):', err.message);
     }
 
-    console.log('[READY] Browser automation ready!');
-    console.log('[READY] Browser is open and available for automation');
+    console.log('[READY] Browser is open and ready');
+    console.log('[READY] Browser window is visible on your display');
     console.log('[READY] Press Ctrl+C to close');
 
     // Keep running
