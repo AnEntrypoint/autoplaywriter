@@ -134,35 +134,56 @@ class PlaywriterMCPHarness {
   }
 
   startKeepalive() {
-    console.log('[KEEPALIVE] Starting health checks (30s interval - monitors extension attachment)\n');
+    console.log('[KEEPALIVE] Starting health checks (30s interval - monitors Playwriter extension)\n');
+    console.log('[KEEPALIVE] Watching for: frame detached, connection loss, extension failure\n');
+
+    let checkCount = 0;
 
     this.keepaliveInterval = setInterval(async () => {
+      checkCount++;
       try {
         if (!this.client) {
-          console.log('[KEEPALIVE] ⚠ Client disconnected, restarting...');
+          console.log('[KEEPALIVE] ⚠ MCP client disconnected, restarting...');
           await this.restart();
           return;
         }
 
-        // Test if extension is still attached to page by trying to use a tool
-        // This requires the extension to be actively connected and reading from the page
+        // Test if Playwriter extension is still responsive
+        // Playwriter extension frequently gets "frame is detached" errors during long sessions
         try {
-          await this.client.callTool({
-            name: 'browser_console_messages',
-            arguments: {}
+          // Test: Evaluate JavaScript on page (proves Playwriter can access frame)
+          const evalResult = await this.client.callTool({
+            name: 'browser_evaluate',
+            arguments: { expression: 'typeof window' }
           });
 
           this.lastInteractionTime = Date.now();
-          console.log('[KEEPALIVE] ✓ Extension attached to page and responding');
+          console.log(`[KEEPALIVE #${checkCount}] ✓ Playwriter extension controls page (frame attached)`);
 
         } catch (toolError) {
-          // Tool failed - extension is not attached or responding
+          // Check if this is a frame detached error - requires immediate restart
+          const errorMessage = toolError.message.toLowerCase();
+          const isFrameDetached = errorMessage.includes('frame') &&
+                                  (errorMessage.includes('detached') ||
+                                   errorMessage.includes('navigator') ||
+                                   errorMessage.includes('context'));
+
+          if (isFrameDetached) {
+            console.log('[KEEPALIVE] ⚠⚠⚠ FRAME DETACHED ERROR DETECTED ⚠⚠⚠');
+            console.log(`[KEEPALIVE] Error: ${toolError.message}`);
+            console.log('[KEEPALIVE] Playwriter extension lost access to page frames');
+            console.log('[KEEPALIVE] Restarting Playwright and Playwriter extension immediately...\n');
+            await this.restart();
+            return;
+          }
+
+          // Not a frame detached error - check if timeout exceeded
           console.log(`[KEEPALIVE] ⚠ Extension not responding: ${toolError.message}`);
           const timeSinceLastInteraction = Date.now() - this.lastInteractionTime;
           console.log(`[KEEPALIVE] ⚠ Time since last successful interaction: ${(timeSinceLastInteraction / 1000).toFixed(1)}s`);
 
           if (timeSinceLastInteraction > this.keepaliveTimeout) {
-            console.log('[KEEPALIVE] ⚠ Extension timeout - restarting MCP and browser...');
+            console.log('[KEEPALIVE] ⚠ Timeout exceeded, restarting MCP and browser...');
             await this.restart();
           }
         }
