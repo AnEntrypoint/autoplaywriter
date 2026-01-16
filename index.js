@@ -55,7 +55,7 @@ class PlaywriterMCPHarness {
             console.log(`[BROWSER] Checking page: ${url}`);
 
             // Close chrome-extension and about pages
-            if (url.includes('chrome-extension') || url.includes('about:') || url.includes('welcome')) {
+            if (url.includes('chrome-extension')) {
               try {
                 await page.close();
                 console.log(`[BROWSER] ✓ Closed: ${url}`);
