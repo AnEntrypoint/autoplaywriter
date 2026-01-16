@@ -35,6 +35,13 @@ async function enablePlaywriterExtension() {
     prefs.extensions.settings[PLAYWRITER_EXTENSION_ID].disable_reasons = 0;
     prefs.extensions.settings[PLAYWRITER_EXTENSION_ID].update_url = PLAYWRITER_STORE_URL;
 
+    // Ensure extension is enabled for all sites including localhost
+    if (!prefs.extensions.permissions) prefs.extensions.permissions = {};
+    const localHostKey = `${PLAYWRITER_EXTENSION_ID},https://localhost/*`;
+    if (!prefs.extensions.permissions[localHostKey]) {
+      prefs.extensions.permissions[localHostKey] = { granted_on: Math.floor(Date.now() / 1000) };
+    }
+
     // Ensure directory exists
     await fs.mkdir(join(homedir(), '.config/chromium/Default'), { recursive: true });
 
@@ -131,7 +138,7 @@ async function main() {
       `--display=${env.DISPLAY}`,
       '--no-sandbox',
       '--disable-gpu',
-      'http://localhost'
+      'about:blank'
     ], {
       detached: true,
       stdio: 'ignore',
@@ -164,16 +171,25 @@ async function main() {
     const toolsList = await client.listTools();
     console.log(`[MCP] Found ${toolsList.tools.length} automation tools available`);
 
-    // Navigate using MCP tools
-    console.log('[NAV] Navigating to http://localhost...');
+    // Navigate using MCP tools (try localhost, fallback to about:blank for extension UI)
+    console.log('[NAV] Connecting to localhost or using extension interface...');
     try {
       await client.callTool({
         name: 'browser_navigate',
         arguments: { url: 'http://localhost' }
       });
-      console.log('[NAV] Navigation successful');
+      console.log('[NAV] Navigation to localhost successful');
     } catch (err) {
-      console.warn('[NAV] Navigation error (localhost may not be running):', err.message);
+      console.log('[NAV] localhost not running - extension available on about:blank and other sites');
+      try {
+        await client.callTool({
+          name: 'browser_navigate',
+          arguments: { url: 'about:blank' }
+        });
+        console.log('[NAV] Extension ready on about:blank');
+      } catch (err2) {
+        // Ignore - browser will show default page
+      }
     }
 
     console.log('[READY] Browser automation ready!');
