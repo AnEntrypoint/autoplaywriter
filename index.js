@@ -44,31 +44,36 @@ class PlaywriterMCPHarness {
       // Step 3: Close welcome/extension tabs, keep only blank pages
       console.log('[BROWSER] Cleaning up extension tabs...');
       let tabsClosed = 0;
+      let tabsKept = 0;
       try {
         const pages = await this.browser.pages();
         console.log(`[BROWSER] Found ${pages.length} page(s)\n`);
 
         for (const page of pages) {
           try {
-            const title = page.url();
-            console.log(`[BROWSER] Checking page: ${title}`);
+            const url = page.url();
+            console.log(`[BROWSER] Checking page: ${url}`);
 
             // Close chrome-extension and about pages
-            if (title.includes('chrome-extension') || title.includes('about:') || title.includes('welcome')) {
-              console.log(`[BROWSER] ✓ Closing: ${title}`);
-              await page.close();
-              tabsClosed++;
+            if (url.includes('chrome-extension') || url.includes('about:') || url.includes('welcome')) {
+              try {
+                await page.close();
+                console.log(`[BROWSER] ✓ Closed: ${url}`);
+                tabsClosed++;
+              } catch (closeErr) {
+                console.log(`[BROWSER] ✗ Failed to close: ${url}`);
+                console.log(`[BROWSER] Error: ${closeErr.message}`);
+              }
+            } else {
+              console.log(`[BROWSER] ℹ Keeping: ${url}`);
+              tabsKept++;
             }
           } catch (err) {
-            // Page might have already been closed, ignore
+            console.log(`[BROWSER] ⚠ Error checking page: ${err.message}`);
           }
         }
 
-        if (tabsClosed > 0) {
-          console.log(`[BROWSER] ✓ Closed ${tabsClosed} extension tab(s)\n`);
-        } else {
-          console.log('[BROWSER] ℹ No extension tabs to close\n');
-        }
+        console.log(`[BROWSER] ✓ Cleanup complete: closed ${tabsClosed}, kept ${tabsKept}\n`);
       } catch (err) {
         console.log(`[BROWSER] ⚠ Tab cleanup error: ${err.message}\n`);
       }
