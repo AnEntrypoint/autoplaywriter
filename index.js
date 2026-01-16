@@ -14,13 +14,21 @@ async function main() {
     // Step 1: Launch VISIBLE Chromium browser directly
     console.log('[BROWSER] Launching Chromium...');
     const userDataDir = join(homedir(), '.config/chromium-autoplay');
+    const extensionPath = '/tmp/playwriter-ext/playwriter-unpacked';
 
     browser = await chromium.launchPersistentContext(userDataDir, {
       headless: false,
-      args: ['--no-sandbox', '--disable-gpu', '--start-maximized']
+      args: [
+        '--no-sandbox',
+        '--disable-gpu',
+        '--start-maximized',
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`
+      ]
     });
 
-    console.log('[BROWSER] ✓ Browser window opened on display\n');
+    console.log('[BROWSER] ✓ Browser window opened on display');
+    console.log('[BROWSER] ✓ Playwriter extension loaded\n');
 
     // Step 2: Wait for browser to stabilize
     await new Promise(r => setTimeout(r, 2000));
@@ -65,8 +73,8 @@ async function main() {
     }
 
     console.log('[READY] ✓ Browser is visible on your display');
+    console.log('[READY] ✓ Playwriter extension puzzle icon in toolbar');
     console.log('[READY] MCP automation tools are available');
-    console.log('[READY] Playwriter extension is active');
     console.log('[READY] Press Ctrl+C to exit\n');
 
     // Keep running
