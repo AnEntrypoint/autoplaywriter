@@ -1,9 +1,9 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { chromium } from '@playwright/test';
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
+import { spawn } from 'child_process';
 
 const PLAYWRITER_EXTENSION_ID = 'jfeammnjpkecdekppnclgkkffahnhfhe';
 const PLAYWRITER_STORE_URL = 'https://clients2.google.com/service/update2/crx';
@@ -72,10 +72,40 @@ async function installSystemExtension() {
   }
 }
 
+async function setupExtensionPolicy() {
+  // Create managed policy to force install extension from Chrome Web Store
+  // This is the system-level approach used in production environments
+  const policiesDir = '/etc/chromium/policies/managed';
+  const policyFile = join(policiesDir, 'extension_install_forcelist.json');
+
+  try {
+    // Policy format: {"ExtensionInstallForcelist": ["ID;URL"]}
+    const policy = {
+      'ExtensionInstallForcelist': [
+        `${PLAYWRITER_EXTENSION_ID};${PLAYWRITER_STORE_URL}`
+      ]
+    };
+
+    try {
+      // Try to write policy (requires system access)
+      await fs.mkdir(policiesDir, { recursive: true });
+      await fs.writeFile(policyFile, JSON.stringify(policy, null, 2));
+      console.log('[EXT] Extension policy installed at /etc/chromium/policies/managed');
+      return true;
+    } catch (err) {
+      // Policy directory requires root - skip if we can't write
+      console.log('[EXT] Policy installation requires system access, continuing with user preferences');
+      return false;
+    }
+  } catch (err) {
+    console.log('[EXT] Could not setup policy, using preferences fallback');
+    return false;
+  }
+}
+
 async function main() {
   console.log('[INIT] Setting up Playwright MCP with Playwriter extension...');
 
-  let context;
   let client;
   let transport;
 
@@ -85,21 +115,31 @@ async function main() {
     env.DISPLAY = env.DISPLAY || ':1';
     env.PLAYWRITER_AUTO_ENABLE = '1';
 
-    // Setup extension - install at system level and enable in user preferences
+    // Setup system-level extension registration first
     console.log('[EXT] Configuring Playwriter extension...');
+    await setupExtensionPolicy();
     await installSystemExtension();
     await enablePlaywriterExtension();
 
-    // Launch visible browser with persistent context and extension enabled
+    // Launch visible browser with Chromium directly (not through Playwright)
+    // This avoids Playwright's --disable-extensions flag
     console.log('[BROWSER] Launching Chromium with Playwriter extension...');
-    context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      args: [
-        '--no-sandbox',
-        '--disable-gpu'
-      ]
+    const chromiumPath = '/home/kasm-user/.cache/ms-playwright/chromium-1200/chrome-linux/chrome';
+
+    spawn(chromiumPath, [
+      `--user-data-dir=${userDataDir}`,
+      `--display=${env.DISPLAY}`,
+      '--no-sandbox',
+      '--disable-gpu',
+      'http://localhost'
+    ], {
+      detached: true,
+      stdio: 'ignore',
+      env
     });
 
+    // Give browser time to start
+    await new Promise(resolve => setTimeout(resolve, 3000));
     console.log('[BROWSER] Browser launched successfully');
 
     // Connect to Playwright MCP server
@@ -147,9 +187,6 @@ async function main() {
 
   } catch (error) {
     console.error('[ERROR] Failed to start:', error.message);
-    if (context) {
-      await context.close().catch(() => {});
-    }
     if (client) {
       await client.close().catch(() => {});
     }
