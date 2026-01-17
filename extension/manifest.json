@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Playwright MCP Bridge",
-  "version": "0.0.56",
-  "description": "Share browser tabs with Playwright MCP server",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9nMS2b0WCohjVHPGb8D9qAdkbIngDqoAjTeSccHJijgcONejge+OJxOQOMLu7b0ovt1c9BiEJa5JcpM+EHFVGL1vluBxK71zmBy1m2f9vZF3HG0LSCp7YRkum9rAIEthDwbkxx6XTvpmAY5rjFa/NON6b9Hlbo+8peUSkoOK7HTwYnnI36asZ9eUTiveIf+DMPLojW2UX33vDWG2UKvMVDewzclb4+uLxAYshY7Mx8we/b44xu+Anb/EBLKjOPk9Yh541xJ5Ozc8EiP/5yxOp9c/lRiYUHaRW+4r0HKZyFt0eZ52ti2iM4Nfk7jRXR7an3JPsUIf5deC/1cVM/+1ZQIDAQAB",
+  "name": "Playwriter MCP",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo1Gd2Ftznw6LJ9r1Tm/KEmx/0U+t2ADztfiAuuzppYjq6rhoVzD4DihXeffQVjFhEyVb9BBrKmiYv42YyWaPxHUWSJwHIsCZsQQ34ggfveVs99Wvrh2fcmKFeu/b9IOiShRhhsdaJnrL3lWmlbrJzVe0Iydx7woJGa2iJkepFAxaCUNcJxX+sWAjRGEwqecwaHEOvUz7KTGb2V/PxxYvRmhixGWTG66aYSMte4mokUxRs0rtRzxpE35brq5puuxXSp/8H38BDtTz3uweUHYBVGme9rFOIFzm10l/rZm9yZeHJ7rTUSuEtrK+NVmJHACbqndTBWES/QUS3ikl7AJ8xwIDAQAB",
+  "version": "0.0.66",
+  "description": "Automate your Browser using Cursor, Claude, VS Code. More capable and context efficient than Playwright MCP.",
   "permissions": [
     "debugger",
-    "activeTab",
-    "tabs",
-    "storage"
+    "tabGroups",
+    "contextMenus",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -18,18 +18,18 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Playwright MCP Bridge",
+    "default_title": "Click to attach debugger",
     "default_icon": {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
+      "16": "icons/icon-gray-16.png",
+      "32": "icons/icon-gray-32.png",
+      "48": "icons/icon-gray-48.png",
+      "128": "icons/icon-gray-128.png"
     }
   },
   "icons": {
-    "16": "icons/icon-16.png",
-    "32": "icons/icon-32.png",
-    "48": "icons/icon-48.png",
-    "128": "icons/icon-128.png"
+    "16": "icons/icon-gray-16.png",
+    "32": "icons/icon-gray-32.png",
+    "48": "icons/icon-gray-48.png",
+    "128": "icons/icon-gray-128.png"
   }
 }
