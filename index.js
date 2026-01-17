@@ -2,7 +2,10 @@ import { chromium } from '@playwright/test';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { homedir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 class PlaywriterMCPHarness {
   constructor() {
@@ -21,7 +24,7 @@ class PlaywriterMCPHarness {
       // Step 1: Launch VISIBLE Chromium browser directly
       console.log('[BROWSER] Launching Chromium...');
       const userDataDir = join(homedir(), '.config/chromium-autoplay');
-      const extensionPath = '/tmp/playwriter-ext/playwriter-unpacked';
+      const extensionPath = join(__dirname, 'extension');
 
       this.browser = await chromium.launchPersistentContext(userDataDir, {
         headless: false,

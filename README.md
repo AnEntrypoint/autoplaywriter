@@ -1,50 +1,10 @@
 # Autoplaywriter
 
-Simple tool that connects to Playwright MCP server with auto-enabled Playwriter extension for browser automation.
+## Technical Caveats
 
-## Installation
-
-```bash
-npm install
-```
-
-## Usage
-
-```bash
-npm start
-```
-
-Output:
-```
-[INIT] Starting Playwright MCP with auto-enabled Playwriter extension...
-[MCP] ✓ Connected to Playwright MCP server
-[NAV] ✓ Successfully navigated
-[READY] Browser automation is ready
-```
-
-## What It Does
-
-1. Launches Playwright MCP server via `npx @playwright/mcp@latest`
-2. Sets `PLAYWRITER_AUTO_ENABLE=1` environment variable for auto-extension connection
-3. Connects to the MCP server using the Model Context Protocol (MCP)
-4. Navigates browser to `http://localhost` (with fallback handling)
-6. Press `Ctrl+C` to exit gracefully
-
-## Environment
-
-- `DISPLAY=:1` - X11 display for rendering
-- `PLAYWRITER_AUTO_ENABLE=1` - Enables Playwriter extension auto-connect
-- `--no-sandbox` - Required for containerized Chromium
-
-## Architecture
-
-```
-Node.js App
-  └─ StdioClientTransport
-      └─ @playwright/mcp@latest (MCP Server)
-          └─ Chromium Browser
-              └─ Playwriter Extension (auto-enabled)
-                  └─ 2 Automation Tools
-```
-
-The MCP server handles all browser management. No manual Chromium configuration needed.
+- Extension folder `extension/` contains Playwright MCP Bridge v0.0.56 from microsoft/playwright-mcp
+- Extension ID `jakfalbnbhgkpmoaakfflhflbfpkailf` is hardcoded in MCP server (cdpRelay.js:81)
+- Extension ID derived from `key` field in manifest.json - do not modify
+- Must load extension via `--load-extension` flag, not Chrome Web Store
+- User data persists to `~/.config/chromium-autoplay`
+- "Frame detached" errors require full browser restart (handled by keepalive)
